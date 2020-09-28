@@ -1,0 +1,202 @@
+---
+title: 'Análise do primeiro turno. Contato: fbarbalho@gmail.com'
+resource_files:
+- perfil_eleitor_secao_2018.RData
+- votacao.RData
+runtime: shiny
+output:
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+```{r global, include=FALSE}
+library(flexdashboard)
+library(shiny)
+library(ggplot2)
+library(dplyr)
+load("votacao.RData")
+load("perfil_eleitor_secao_2018.RData")
+
+
+
+
+```
+
+Inputs {.sidebar data-width=200}
+-----------------------------------------------------------------------
+```{r}
+selectInput("partido",
+                     "Selecione o partido",
+                     choices =unique(votacao$SG_PARTIDO),
+                     selected ="PT",
+                     multiple = TRUE)
+
+# selectInput("zona",
+#                      "Selecione a zona eleitoral",
+#                      choices =as.character(unique(votacao$NR_ZONA)),
+#                      #selected = "1",
+#                      multiple = TRUE)
+ 
+selectInput("genero",
+                     "Selecione o gênero",
+                     choices =unique(perfil_eleitor_secao_2018$DS_GENERO)[1:2],
+                     #selected = "FEMININO",
+                     multiple = TRUE)
+ 
+ selectInput("escolaridade",
+                      "Selecione a escolaridade",
+                      choices =unique(perfil_eleitor_secao_2018$DS_GRAU_ESCOLARIDADE),
+                      #selected = "ENSINO FUNDAMENTAL COMPLETO",
+                      multiple = TRUE)
+ 
+ selectInput("faixa_etaria",
+                      "Selecione a faixa etária",
+                      choices =sort(unique(perfil_eleitor_secao_2018$DS_FAIXA_ETARIA)),
+                      #selected = "21 a 24 anos",
+                      multiple = TRUE)
+ 
+ selectInput("estado_civil",
+                      "Selecione o estado civil",
+                      choices =unique(perfil_eleitor_secao_2018$DS_ESTADO_CIVIL)[c(1,2,4,5)],
+                      #selected = "SOLTEIRO",
+                      multiple = TRUE)
+
+
+```
+
+
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Distribuição dos Votos por partido nas zonas eleitorais
+
+```{r}
+
+renderPlot({
+  if (is.null(input$partido)){
+    filtro_partido <- unique(votacao$SG_PARTIDO)
+    
+  } else{
+    filtro_partido <- input$partido
+  }
+  
+  
+  if (is.null(input$zona)){
+    filtro_zona <- unique(votacao$NR_ZONA)
+    
+  } else{
+    filtro_zona <- input$input$zona
+  }
+  
+  votacao_trabalho <- votacao %>% filter(NR_ZONA %in% filtro_zona, SG_PARTIDO %in% filtro_partido)
+  
+  votacao_trabalho <-votacao_trabalho %>% group_by(NR_ZONA, SG_PARTIDO)
+  votacao_trabalho <- votacao_trabalho %>% summarize(
+    total_votos =sum(QT_VOTOS) 
+  )
+  
+  # votacao_trabalho$NR_ZONA <- factor(unique(as.character(votacao_trabalho$NR_ZONA)), levels = as.character(unique(votacao_trabalho$NR_ZONA[order(unique(votacao_trabalho$NR_ZONA), decreasing = TRUE )])))
+
+  #unique(votacao_trabalho$NR_ZONA)
+  
+  ggplot(votacao_trabalho, aes(fill = SG_PARTIDO, y = total_votos, x = as.character(NR_ZONA))) +
+    coord_flip() +
+    geom_bar(stat="identity", width=0.6, color = "white", size = 1) +
+    geom_text(aes(label= ifelse(total_votos == 0, "", format(round(total_votos,0), big.mark = ".", decimal.mark = ","))),
+              size = 2.5,
+              hjust = 0.5,
+              position = position_stack(vjust = 0.5),
+              family = "Source Sans Pro",
+              color = "grey20") +
+    scale_y_continuous(labels=function(x) {format(x, big.mark = ".", decimal.mark=",", scientific = FALSE)}) +
+    
+    # scale_color_manual(values = cores_legenda) + #se fosse colocar os rótulos com as mesmas cores
+    labs(
+      x = NULL,
+      y = NULL,
+      fill = "SG_PARTIDO")+
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+          panel.background = element_blank(), legend.position="bottom", legend.title = element_blank())#+
+  #facet_grid(Classe ~ .) +
+  #tema_BSPN() #+ guides(color = FALSE) # se fosse colocar rótulos c/ core
+  
+  
+})
+
+```
+
+Column 
+-----------------------------------------------------------------------
+
+### Distribuição do perfil selecionado por zona eleitoral
+ 
+
+
+```{r}
+renderPlot({
+  if (is.null(input$genero)){
+    filtro_genero <- unique(perfil_eleitor_secao_2018$DS_GENERO)
+    
+  } else{
+    filtro_genero <- input$genero
+  }
+  
+  if (is.null(input$escolaridade)){
+    filtro_escolaridade <- unique(perfil_eleitor_secao_2018$DS_GRAU_ESCOLARIDADE)
+    
+  } else{
+    filtro_escolaridade <- input$escolaridade
+  }
+  
+  if (is.null(input$faixa_etaria)){
+    filtro_faixa_etaria <- unique(perfil_eleitor_secao_2018$DS_FAIXA_ETARIA)
+    
+  } else{
+    filtro_faixa_etaria <- input$faixa_etaria
+  }
+  
+  if (is.null(input$estado_civil)){
+    filtro_estado_civil <- unique(perfil_eleitor_secao_2018$DS_ESTADO_CIVIL)
+    
+  } else{
+    filtro_estado_civil <- input$estado_civil
+  }
+  
+  names(perfil_eleitor_secao_2018)
+  perfil_eleitor_secao_2018_trabalho<- perfil_eleitor_secao_2018
+  
+  
+  perfil_eleitor_secao_2018_trabalho <- perfil_eleitor_secao_2018_trabalho %>%      filter(DS_GENERO %in% filtro_genero, 
+                                                                                           DS_FAIXA_ETARIA %in% filtro_faixa_etaria,
+                                                                                           DS_GRAU_ESCOLARIDADE %in% filtro_escolaridade,
+                                                                                           DS_ESTADO_CIVIL %in% filtro_estado_civil)
+  
+  perfil_eleitor_secao_2018_trabalho <-perfil_eleitor_secao_2018_trabalho %>% group_by(NR_ZONA)
+  perfil_eleitor_secao_2018_trabalho<- perfil_eleitor_secao_2018_trabalho %>% summarize(
+    total_perfil =sum(QT_ELEITORES_PERFIL) 
+    
+  )
+  
+perfil_eleitor_secao_2018_trabalho$NR_ZONA <- factor(unique(as.character(perfil_eleitor_secao_2018_trabalho$NR_ZONA)), levels = as.character(unique(perfil_eleitor_secao_2018_trabalho$NR_ZONA)[order(perfil_eleitor_secao_2018_trabalho$total_perfil)]))
+  
+  data<-perfil_eleitor_secao_2018_trabalho
+  ggplot(data, aes(x=as.character(NR_ZONA), y=total_perfil)) +
+    geom_segment( aes(x=NR_ZONA, xend=NR_ZONA, y=0, yend=total_perfil ), color="blue", size= 0.5) +
+    geom_point( color="blue", size= 2 ) +
+    theme_light(base_size = 9, base_family = "") +
+    coord_flip() +
+    theme(
+      legend.position="none",
+      panel.grid.major.y = element_blank(),
+      axis.ticks.length = unit(.99, "cm"),
+      panel.border = element_blank(),
+      axis.ticks.y = element_blank(),
+      text = element_text(size=13)
+    ) +
+    xlab("") +
+    ylab(paste0("Distribuição do Perfil por seção"))
+})
+```
+
+
